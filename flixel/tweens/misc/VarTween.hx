@@ -1,12 +1,6 @@
 package flixel.tweens.misc;
 
 import flixel.tweens.FlxTween;
-import flixel.util.typeLimit.OneOfTwo;
-#if hscript_improved
-import hscript.IHScriptCustomBehaviour;
-#end
-
-using StringTools;
 
 /**
  * Tweens multiple numeric properties of an object simultaneously.
@@ -64,9 +58,7 @@ class VarTween extends FlxTween
 
 			if (active)
 				for (info in _propertyInfos)
-				{
-					info.setField(info.startValue + info.range * scale);
-				}
+					Reflect.setProperty(info.object, info.field, info.startValue + info.range * scale);
 		}
 	}
 
@@ -80,46 +72,21 @@ class VarTween extends FlxTween
 
 		for (fieldPath in fieldPaths)
 		{
-			var target:Dynamic = _object;
-			var path = FlxTween.parseFieldString(fieldPath);
+			var target = _object;
+			var path = fieldPath.split(".");
 			var field = path.pop();
 			for (component in path)
 			{
-				if (Type.typeof(component) == TInt)
-				{
-					if ((target is Array))
-					{
-						var index:Int = cast component;
-						var arr:Array<Dynamic> = cast target;
-						target = arr[index];
-					}
-				}
-				else
-				{ // TClass(String)
-					target = Reflect.getProperty(target, component);
-				}
-				if (!Reflect.isObject(target) && !(target is Array))
+				target = Reflect.getProperty(target, component);
+				if (!Reflect.isObject(target))
 					throw 'The object does not have the property "$component" in "$fieldPath"';
 			}
-
-			#if hscript_improved
-			var isCustom = false;
-			var custom:IHScriptCustomBehaviour = null;
-			if (target is IHScriptCustomBehaviour)
-			{
-				isCustom = true;
-				custom = cast target;
-			}
-			#end
 
 			_propertyInfos.push({
 				object: target,
 				field: field,
 				startValue: Math.NaN, // gets set after delay
 				range: Reflect.getProperty(_properties, fieldPath)
-					#if hscript_improved
-					, isCustom: isCustom, custom: custom
-					#end
 			});
 		}
 	}
@@ -128,10 +95,10 @@ class VarTween extends FlxTween
 	{
 		for (info in _propertyInfos)
 		{
-			var value:Dynamic = info.getField();
-			if (value == null)
+			if (Reflect.getProperty(info.object, info.field) == null)
 				throw 'The object does not have the property "${info.field}"';
 
+			var value:Dynamic = Reflect.getProperty(info.object, info.field);
 			if (Math.isNaN(value))
 				throw 'The property "${info.field}" is not numeric.';
 
@@ -148,14 +115,14 @@ class VarTween extends FlxTween
 		_propertyInfos = null;
 	}
 
-	override function isTweenOf(object:Dynamic, ?field:OneOfTwo<String, Int>):Bool
+	override function isTweenOf(object:Dynamic, ?field:String):Bool
 	{
 		if (object == _object && field == null)
 			return true;
-
+		
 		for (property in _propertyInfos)
 		{
-			if (object == property.object && (field == null || field == property.field))
+			if (object == property.object && (field == property.field || field == null))
 				return true;
 		}
 
@@ -163,53 +130,10 @@ class VarTween extends FlxTween
 	}
 }
 
-@:structInit
-class VarTweenProperty
+typedef VarTweenProperty =
 {
-	public var object:Dynamic;
-	public var field:OneOfTwo<String, Int>;
-	public var startValue:Float;
-	public var range:Float;
-	#if hscript_improved
-	@:optional public var isCustom:Bool = false;
-	@:optional public var custom:IHScriptCustomBehaviour;
-	#end
-
-	public function getField():Dynamic
-	{
-		if (Type.typeof(field) == TInt)
-		{
-			var index:Int = cast field;
-			var arr:Array<Dynamic> = cast object;
-			return arr[index];
-		}
-		else
-		{
-			#if hscript_improved
-			if (isCustom)
-				return custom.hget(field);
-			else
-			#end
-			return Reflect.getProperty(object, field);
-		}
-	}
-
-	public function setField(value:Dynamic):Void
-	{
-		if (Type.typeof(field) == TInt)
-		{
-			var index:Int = cast field;
-			var arr:Array<Dynamic> = cast object;
-			arr[index] = value;
-		}
-		else
-		{
-			#if hscript_improved
-			if (isCustom)
-				custom.hset(field, value);
-			else
-			#end
-			Reflect.setProperty(object, field, value);
-		}
-	}
+	object:Dynamic,
+	field:String,
+	startValue:Float,
+	range:Float
 }

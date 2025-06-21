@@ -460,6 +460,7 @@ class FlxSprite extends FlxObject
 		frameOffset = FlxDestroyUtil.put(frameOffset);
 		origin = FlxDestroyUtil.put(origin);
 		scale = FlxDestroyUtil.put(scale);
+
 		_halfSize = FlxDestroyUtil.put(_halfSize);
 		_scaledOrigin = FlxDestroyUtil.put(_scaledOrigin);
 		_scaledFrameOffset = FlxDestroyUtil.put(_scaledFrameOffset);
@@ -702,7 +703,7 @@ class FlxSprite extends FlxObject
 	 *                   it is used as a prefix to find a new unique name like `"Key3"`.
 	 * @return  This `FlxSprite` instance (nice for chaining stuff together, if you're into that).
 	 */
-	public function makeSolid(Width:Int, Height:Int, Color:FlxColor = FlxColor.WHITE, Unique:Bool = false, ?Key:String):FlxSprite
+	public function makeSolid(Width:Float, Height:Float, Color:FlxColor = FlxColor.WHITE, Unique:Bool = false, ?Key:String):FlxSprite
 	{
 		var graph:FlxGraphic = FlxG.bitmap.create(1, 1, Color, Unique, Key);
 		frames = graph.imageFrame;
@@ -763,12 +764,12 @@ class FlxSprite extends FlxObject
 
 	/**
 	 * Helper function to set the graphic's dimensions by using `scale`, allowing you to keep the current aspect ratio
-	 * should one of the Integers be `<= 0`. It might make sense to call `updateHitbox()` afterwards!
+	 * should one of the numbers be `<= 0`. It might make sense to call `updateHitbox()` afterwards!
 	 *
 	 * @param   Width    How wide the graphic should be. If `<= 0`, and `Height` is set, the aspect ratio will be kept.
 	 * @param   Height   How high the graphic should be. If `<= 0`, and `Width` is set, the aspect ratio will be kept.
 	 */
-	public function setGraphicSize(Width:Int = 0, Height:Int = 0):Void
+	public function setGraphicSize(Width:Float = 0, Height:Float = 0):Void
 	{
 		if (Width <= 0 && Height <= 0)
 			return;
@@ -811,7 +812,6 @@ class FlxSprite extends FlxObject
 			_flashRect2.width = graphic.width;
 			_flashRect2.height = graphic.height;
 		}
-
 		centerOrigin();
 
 		if (FlxG.renderBlit)
@@ -849,6 +849,12 @@ class FlxSprite extends FlxObject
 	 */
 	override public function draw():Void
 	{
+		_draw();
+	}
+
+	@:noCompletion
+	inline function _draw():Void
+	{
 		if (__drawOverrided)
 		{ // So cool thanks neo for advice
 			__drawOverrided = false;
@@ -869,7 +875,7 @@ class FlxSprite extends FlxObject
 		if (shader != null && shader is FlxGraphicsShader)
 			shader.setCamSize(_frame.frame.x, _frame.frame.y, _frame.frame.width, _frame.frame.height);
 
-		for (camera in cameras)
+		for (camera in getCamerasLegacy())
 		{
 			if (!camera.visible || !camera.exists || !isOnScreen(camera))
 				continue;
@@ -907,18 +913,16 @@ class FlxSprite extends FlxObject
 		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX() != camera.flipX, checkFlipY() != camera.flipY);
 		_matrix.translate(-origin.x, -origin.y);
 
+		var _animOffset:FlxPoint = animation.curAnim?.offset ?? FlxPoint.weak();
 		if (frameOffsetAngle != null && frameOffsetAngle != angle)
 		{
-			var angleOff = (frameOffsetAngle - angle) * FlxAngle.TO_RAD;
-			var cos = Math.cos(angleOff);
-			var sin = Math.sin(angleOff);
-			// cos doesnt need to be negated
-			_matrix.rotateWithTrig(cos, -sin);
-			_matrix.translate(-frameOffset.x, -frameOffset.y);
-			_matrix.rotateWithTrig(cos, sin);
+			var angleOff = (-angle + frameOffsetAngle) * FlxAngle.TO_RAD;
+			_matrix.rotate(-angleOff);
+			_matrix.translate(-(frameOffset.x + _animOffset.x), -(frameOffset.y + _animOffset.y));
+			_matrix.rotate(angleOff);
 		}
 		else
-			_matrix.translate(-frameOffset.x, -frameOffset.y);
+			_matrix.translate(-(frameOffset.x + _animOffset.x), -(frameOffset.y + _animOffset.y));
 
 		_matrix.scale(scale.x, scale.y);
 
@@ -946,6 +950,8 @@ class FlxSprite extends FlxObject
 			layer.drawPixels(this, camera, _frame, framePixels, _matrix, colorTransform, blend, antialiasing, shaderEnabled ? shader : null);
 		else
 			camera.drawPixels(_frame, framePixels, _matrix, colorTransform, blend, antialiasing, shaderEnabled ? shader : null);
+		
+		_animOffset.putWeak();
 	}
 
 	/**
@@ -1399,16 +1405,24 @@ class FlxSprite extends FlxObject
 		if (camera == null)
 			camera = FlxG.camera;
 
+		var _animOffset:FlxPoint = animation.curAnim?.offset ?? FlxPoint.weak();
+
 		newRect.setPosition(x, y);
 		if (pixelPerfectPosition)
 			newRect.floor();
-		_scaledOrigin.set(origin.x * scale.x, origin.y * scale.y);
-		_scaledFrameOffset.set(frameOffset.x * scale.x, frameOffset.y * scale.y);
+
+		_scaledOrigin.set(origin.x * Math.abs(scale.x), origin.y * Math.abs(scale.y));
+		_scaledFrameOffset.set((frameOffset.x + _animOffset.x) * Math.abs(scale.x), (frameOffset.y + _animOffset.y) * Math.abs(scale.y));
+		
 		newRect.x += -Std.int(camera.scroll.x * scrollFactor.x) - offset.x + origin.x - _scaledOrigin.x;
 		newRect.y += -Std.int(camera.scroll.y * scrollFactor.y) - offset.y + origin.y - _scaledOrigin.y;
+		
 		if (isPixelPerfectRender(camera))
 			newRect.floor();
-		newRect.setSize(frameWidth * Math.abs(scale.x), frameHeight * Math.abs(scale.y));
+
+		_animOffset.putWeak();
+		newRect.setSize((frameWidth * Math.abs(scale.x)) - frameOffset.x, (frameHeight * Math.abs(scale.y)) - frameOffset.y);
+		
 		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect, _scaledFrameOffset);
 	}
 
@@ -1627,7 +1641,7 @@ class FlxSprite extends FlxObject
 	function set_clipRect(rect:FlxRect):FlxRect
 	{
 		if (rect != null)
-			clipRect = rect.round();
+			clipRect = rect; // can you not .round() this please
 		else
 			clipRect = null;
 

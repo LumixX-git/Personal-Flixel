@@ -513,14 +513,6 @@ class FlxCamera extends FlxBasic
 	 */
 	var _filters:Array<BitmapFilter>;
 
-	public var filters(get, set):Array<BitmapFilter>;
-
-	inline function get_filters():Array<BitmapFilter>
-		return _filters;
-
-	inline function set_filters(value:Array<BitmapFilter>):Array<BitmapFilter>
-		return _filters = value;
-
 	/**
 	 * Camera's initial zoom value. Used for camera's scale handling.
 	 */
@@ -737,7 +729,6 @@ class FlxCamera extends FlxBasic
 			&& _currentDrawItem.type == FlxDrawItemType.TRIANGLES
 			&& _headTriangles.graphics == graphic
 			&& _headTriangles.antialiasing == smoothing
-			&& _headTriangles.blend == blend
 			&& _headTriangles.colored == isColored #if !flash
 			&& _headTriangles.hasColorOffsets == hasColorOffsets
 			&& _headTriangles.shader == shader #end
@@ -770,7 +761,6 @@ class FlxCamera extends FlxBasic
 		itemToReturn.graphics = graphic;
 		itemToReturn.antialiasing = smoothing;
 		itemToReturn.colored = isColored;
-		itemToReturn.blend = blend;
 		#if !flash
 		itemToReturn.hasColorOffsets = hasColorOffsets;
 		itemToReturn.shader = shader;
@@ -1385,14 +1375,16 @@ class FlxCamera extends FlxBasic
 				_lastTargetPosition.y = target.y;
 			}
 
-			if (followLerp == Math.POSITIVE_INFINITY)
+			var adjustedLerp:Float = followLerp * FlxG.elapsed * 60;
+			
+			if (adjustedLerp >= 1 || followLerp == Math.POSITIVE_INFINITY || followLerp >= 1)
 			{
 				scroll.copyFrom(_scrollTarget); // no easing
 			}
 			else
 			{
-				scroll.x = FlxMath.lerp(scroll.x, _scrollTarget.x, followLerp * FlxG.elapsed * 60);
-				scroll.y = FlxMath.lerp(scroll.y, _scrollTarget.y, followLerp * FlxG.elapsed * 60);
+				scroll.x = FlxMath.lerp(scroll.x, _scrollTarget.x, adjustedLerp);
+				scroll.y = FlxMath.lerp(scroll.y, _scrollTarget.y, adjustedLerp);
 			}
 		}
 	}
@@ -1577,7 +1569,7 @@ class FlxCamera extends FlxBasic
 			Style = LOCKON;
 
 		if (Lerp == null)
-			Lerp = 60 / FlxG.updateFramerate;
+			Lerp = 1;
 
 		style = Style;
 		target = Target;
@@ -1710,40 +1702,16 @@ class FlxCamera extends FlxBasic
 		_fxShakeAxes = Axes;
 	}
 
-	public function stopFade():Void
-	{
-		_fxFlashAlpha = 0.0;
-		_fxFadeAlpha = 0.0;
-		_fxFadeDuration = 0.0;
-	}
-
 	/**
-	 * Stops the flash effect on `this` camera.
-	 */
-	public function stopFlash():Void
-	{
-		_fxFlashAlpha = 0.0;
-		updateFlashSpritePosition();
-	}
-
-	/**
-	 * Stops the shake effect on `this` camera.
-	 */
-	public function stopShake():Void
-	{
-		_fxShakeDuration = 0.0;
-	}
-
-	/**
-	 * Stops all effects on `this` camera.
+	 * Just turns off all the camera effects instantly.
 	 */
 	public function stopFX():Void
 	{
+		_fxFlashAlpha = 0.0;
 		_fxFadeAlpha = 0.0;
 		_fxFadeDuration = 0.0;
-		_fxFlashAlpha = 0.0;
-		updateFlashSpritePosition();
 		_fxShakeDuration = 0.0;
+		updateFlashSpritePosition();
 	}
 
 	/**
@@ -1825,35 +1793,35 @@ class FlxCamera extends FlxBasic
 	@:allow(flixel.system.frontEnds.CameraFrontEnd)
 	function drawFX():Void
 	{
+		var alphaComponent:Float;
+
 		// Draw the "flash" special effect onto the buffer
 		if (_fxFlashAlpha > 0.0)
 		{
+			alphaComponent = _fxFlashColor.alpha;
+
 			if (FlxG.renderBlit)
 			{
-				var color = _fxFlashColor;
-				color.alphaFloat *= _fxFlashAlpha;
-				fill(color);
+				fill((Std.int(((alphaComponent <= 0) ? 0xff : alphaComponent) * _fxFlashAlpha) << 24) + (_fxFlashColor & 0x00ffffff));
 			}
 			else
 			{
-				final alpha = color.alphaFloat * _fxFlashAlpha;
-				fill(_fxFlashColor.rgb, true, alpha, canvas.graphics);
+				fill((_fxFlashColor & 0x00ffffff), true, ((alphaComponent <= 0) ? 0xff : alphaComponent) * _fxFlashAlpha / 255, canvas.graphics);
 			}
 		}
 
 		// Draw the "fade" special effect onto the buffer
 		if (_fxFadeAlpha > 0.0)
 		{
+			alphaComponent = _fxFadeColor.alpha;
+
 			if (FlxG.renderBlit)
 			{
-				var color = _fxFadeColor;
-				color.alphaFloat *= _fxFadeAlpha;
-				fill(color);
+				fill((Std.int(((alphaComponent <= 0) ? 0xff : alphaComponent) * _fxFadeAlpha) << 24) + (_fxFadeColor & 0x00ffffff));
 			}
 			else
 			{
-				final alpha = _fxFadeColor.alphaFloat * _fxFadeAlpha;
-				fill(_fxFadeColor.rgb, true, alpha, canvas.graphics);
+				fill((_fxFadeColor & 0x00ffffff), true, ((alphaComponent <= 0) ? 0xff : alphaComponent) * _fxFadeAlpha / 255, canvas.graphics);
 			}
 		}
 	}
@@ -2058,7 +2026,7 @@ class FlxCamera extends FlxBasic
 
 	function set_followLerp(Value:Float):Float
 	{
-		return followLerp = FlxMath.bound(Value, 0, 60 / FlxG.updateFramerate);
+		return followLerp = FlxMath.bound(Value, 0.0, 1.0);
 	}
 
 	function set_width(Value:Int):Int

@@ -11,10 +11,24 @@ class FlxArrayUtil
 	 * @param	array		The array.
 	 * @param	newLength	The length you want the array to have.
 	 */
-	public static inline function setLength<T>(array:Array<T>, newLength:Int):Array<T>
+	@:generic
+	public static function setLength<T>(array:Array<T>, newLength:Int):Array<T>
 	{
-		if (newLength > 0 && newLength < array.length)
-			array.resize(newLength);
+		if (newLength < 0)
+			return array;
+
+		var oldLength:Int = array.length;
+		var diff:Int = newLength - oldLength;
+		if (diff >= 0)
+			return array;
+
+		#if flash
+		untyped array.length = newLength;
+		#else
+		diff = -diff;
+		for (i in 0...diff)
+			array.pop();
+		#end
 
 		return array;
 	}
@@ -60,9 +74,7 @@ class FlxArrayUtil
 	 * @param 	index	The index of the element to be removed from the array
 	 * @return	The array
 	 */
-	#if FLX_GENERIC
 	@:generic
-	#end
 	public static inline function swapAndPop<T>(array:Array<T>, index:Int):Array<T>
 	{
 		array[index] = array[array.length - 1]; // swap element to remove and last element
@@ -94,7 +106,7 @@ class FlxArrayUtil
 	 */
 	public static inline function safeSwapByIndex<T>(array:Array<T>, index1:Int, index2:Int):Array<T>
 	{
-		if (index1 >= 0 && index1 < array.length && index2 >= 0 && index2 < array.length)
+		if(index1 >= 0 && index1 < array.length && index2 >= 0 && index2 < array.length)
 		{
 			swapByIndex(array, index1, index2);
 		}
@@ -210,7 +222,7 @@ class FlxArrayUtil
 	{
 		if (array == null)
 			array = [];
-
+		
 		array.push(element);
 		return array;
 	}

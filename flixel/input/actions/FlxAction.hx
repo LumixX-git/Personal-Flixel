@@ -341,14 +341,8 @@ class FlxAction implements IFlxDestroyable
 	var _x:Null<Float> = null;
 	var _y:Null<Float> = null;
 
-	var _timestamp:Int = 0;
-	var _checked(get, set):Bool;
-
-	inline function get__checked():Bool
-		return triggered;
-
-	inline function set__checked(value:Bool):Bool
-		return triggered = value;
+	var _timestamp:Float = 0;
+	var _checked:Bool = false;
 
 	/**
 	 * Whether the steam controller inputs for this action have changed since the last time origins were polled. Always false if steam isn't active
@@ -441,34 +435,40 @@ class FlxAction implements IFlxDestroyable
 	 */
 	public function check():Bool
 	{
-		if (_timestamp == FlxG.game.ticks)
-			return triggered; // run no more than once per frame
-
 		_x = null;
 		_y = null;
 
-		_timestamp = FlxG.game.ticks;
-		triggered = false;
-
-		var i = inputs != null ? inputs.length : 0;
-		while (i-- > 0) // Iterate backwards, since we may remove items
+		if (_timestamp == FlxG.game.ticks)
 		{
-			final input = inputs[i];
+			triggered = _checked;
+			return _checked; // run no more than once per frame
+		}
+
+		_timestamp = FlxG.game.ticks;
+		_checked = false;
+
+		var len = inputs != null ? inputs.length : 0;
+		for (i in 0...len)
+		{
+			var j = len - i - 1;
+			var input = inputs[j];
 
 			if (input.destroyed)
 			{
-				// inputs.remove(input);
-				inputs.splice(i, 1);
+				inputs.splice(j, 1);
 				continue;
 			}
 
 			input.update();
 
 			if (input.check(this))
-				triggered = true;
+			{
+				_checked = true;
+			}
 		}
 
-		return triggered;
+		triggered = _checked;
+		return _checked;
 	}
 
 	/**

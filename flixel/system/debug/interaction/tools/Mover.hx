@@ -6,7 +6,7 @@ import flixel.FlxObject;
 import flixel.math.FlxPoint;
 import flixel.system.debug.interaction.Interaction;
 
-#if FLX_DEBUG @:bitmap("assets/images/debugger/buttons/mover.png") #end
+@:bitmap("assets/images/debugger/buttons/mover.png")
 class GraphicMoverTool extends BitmapData {}
 
 /**
@@ -25,7 +25,7 @@ class Mover extends Tool
 		_lastCursorPosition = new FlxPoint(brain.flixelPointer.x, brain.flixelPointer.x);
 
 		_name = "Mover";
-		_shortcut = brain.macKeyboard ? "⌘" : "Ctrl";
+		_shortcut = "Shift";
 		setButton(GraphicMoverTool);
 		setCursor(new GraphicMoverTool(0, 0));
 
@@ -34,9 +34,8 @@ class Mover extends Tool
 
 	override public function update():Void
 	{
-		final key = _brain.macKeyboard ? Keyboard.COMMAND : Keyboard.CONTROL;
 		// Is the tool active or its hotkey pressed?
-		if (!isActive() && !_brain.keyPressed(key) && !_dragging)
+		if (!isActive() && !_brain.keyPressed(Keyboard.SHIFT))
 			return;
 
 		if (_brain.pointerPressed && !_dragging)

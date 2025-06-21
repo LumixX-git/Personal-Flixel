@@ -15,7 +15,7 @@ import flixel.system.ui.FlxSystemButton;
 import flixel.util.FlxColor;
 import flixel.util.FlxDestroyUtil;
 
-#if FLX_DEBUG @:bitmap("assets/images/debugger/windowHandle.png") #end
+@:bitmap("assets/images/debugger/windowHandle.png")
 class GraphicWindowHandle extends BitmapData {}
 
 /**
@@ -261,7 +261,7 @@ class Window extends Sprite
 	{
 		visible = Value;
 
-		if (!_closable && FlxDebugger.save.isBound)
+		if (!_closable && FlxG.save.isBound)
 			saveWindowVisibility();
 
 		if (toggleButton != null)
@@ -283,32 +283,30 @@ class Window extends Sprite
 
 	function loadSaveData():Void
 	{
-		var save = FlxDebugger.save;
-		if (!save.isBound)
+		if (!FlxG.save.isBound)
 			return;
 
-		if (save.data.windowSettings == null)
+		if (FlxG.save.data.windowSettings == null)
 		{
 			initWindowsSave();
-			save.flush();
+			FlxG.save.flush();
 		}
-		visible = save.data.windowSettings[_id];
+		visible = FlxG.save.data.windowSettings[_id];
 	}
 
 	function initWindowsSave()
 	{
 		var maxWindows = 10; // arbitrary
-		FlxDebugger.save.data.windowSettings = [for (_ in 0...maxWindows) true];
+		FlxG.save.data.windowSettings = [for (_ in 0...maxWindows) true];
 	}
 
 	function saveWindowVisibility()
 	{
-		var save = FlxDebugger.save;
-		if (save.data.windowSettings == null)
+		if (FlxG.save.data.windowSettings == null)
 			initWindowsSave();
 
-		save.data.windowSettings[_id] = visible;
-		save.flush();
+		FlxG.save.data.windowSettings[_id] = visible;
+		FlxG.save.flush();
 	}
 
 	public function update():Void {}

@@ -381,19 +381,22 @@ class FlxFrame implements IFlxDestroyable
 	inline function checkInputBitmap(?bmd:BitmapData, ?point:Point, rotation:FlxFrameAngle = FlxFrameAngle.ANGLE_0, mergeAlpha:Bool = false,
 			disposeIfNotEqual:Bool = false):BitmapData
 	{
-		final flipXY = rotation != FlxFrameAngle.ANGLE_0;
-		final w = Std.int(flipXY ? sourceSize.y : sourceSize.x);
-		final h = Std.int(flipXY ? sourceSize.x : sourceSize.y);
+		var w:Int = Std.int(sourceSize.x);
+		var h:Int = Std.int(sourceSize.y);
+
+		if (rotation != FlxFrameAngle.ANGLE_0)
+		{
+			var t:Int = w;
+			w = h;
+			h = t;
+		}
 
 		if (bmd != null && disposeIfNotEqual)
 			bmd = FlxDestroyUtil.disposeIfNotEqual(bmd, w, h);
 
 		if (bmd != null && !mergeAlpha)
 		{
-			if (point != null)
-				rect.setTo(point.x, point.y, w, h);
-			else
-				rect.setTo(0, 0, w, h);
+			rect.setTo(point.x, point.y, w, h);
 			bmd.fillRect(rect, FlxColor.TRANSPARENT);
 		}
 		else if (bmd == null)

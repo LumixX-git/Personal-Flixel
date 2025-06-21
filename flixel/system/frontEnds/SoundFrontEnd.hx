@@ -5,12 +5,10 @@ import flixel.FlxG;
 import flixel.group.FlxGroup;
 import flixel.input.keyboard.FlxKey;
 import flixel.math.FlxMath;
+import flixel.system.FlxAssets;
 import flixel.sound.FlxSound;
 import flixel.sound.FlxSoundGroup;
-import flixel.system.FlxAssets;
 import flixel.system.ui.FlxSoundTray;
-import flixel.util.FlxSave;
-import flixel.util.FlxSignal;
 import openfl.Assets;
 import openfl.media.Sound;
 #if (openfl >= "8.0.0")
@@ -39,17 +37,11 @@ class SoundFrontEnd
 	 */
 	public var volumeHandler:Float->Void;
 
-	/**
-	 * A signal that gets dispatched whenever the volume changes.
-	 */
-	public var onVolumeChange(default, null):FlxTypedSignal<Float->Void> = new FlxTypedSignal<Float->Void>();
-
 	#if FLX_KEYBOARD
 	/**
 	 * Wether volume control by keys is allowed
 	 */
 	public var keysAllowed:Bool = true;
-
 	/**
 	 * The key codes used to increase volume (see FlxG.keys for the keys available).
 	 * Default keys: + (and numpad +). Set to null to deactivate.
@@ -74,14 +66,14 @@ class SoundFrontEnd
 	 * volumeUp-, volumeDown- or muteKeys is pressed.
 	 */
 	public var soundTrayEnabled:Bool = true;
-
+	
 	#if FLX_SOUND_TRAY
 	/**
 	 * The sound tray display container.
 	 * A getter for `FlxG.game.soundTray`.
 	 */
 	public var soundTray(get, never):FlxSoundTray;
-
+	
 	inline function get_soundTray()
 	{
 		return FlxG.game.soundTray;
@@ -108,15 +100,6 @@ class SoundFrontEnd
 	 */
 	public var volume(default, set):Float = 1;
 
-	public static var save(get, null):FlxSave;
-
-	static function get_save():FlxSave
-	{
-		if (save == null || !save.isBound)
-			save = FlxG.save;
-		return save;
-	}
-
 	/**
 	 * Set up and play a looping background soundtrack.
 	 *
@@ -127,9 +110,6 @@ class SoundFrontEnd
 	 */
 	public function playMusic(embeddedMusic:FlxSoundAsset, volume = 1.0, looped = true, ?group:FlxSoundGroup):Void
 	{
-		if (group == null)
-			group = defaultMusicGroup;
-
 		if (music == null)
 		{
 			music = new FlxSound();
@@ -142,7 +122,7 @@ class SoundFrontEnd
 		music.loadEmbedded(embeddedMusic, looped);
 		music.volume = volume;
 		music.persist = true;
-		group.add(music);
+		music.group = (group == null) ? defaultMusicGroup : group;
 		music.play();
 	}
 
@@ -204,15 +184,14 @@ class SoundFrontEnd
 
 	function loadHelper(sound:FlxSound, volume:Float, group:FlxSoundGroup, autoPlay = false):FlxSound
 	{
-		if (group == null)
-			group = defaultSoundGroup;
-
 		sound.volume = volume;
-		group.add(sound);
 
 		if (autoPlay)
+		{
 			sound.play();
+		}
 
+		sound.group = (group == null) ? defaultSoundGroup : group;
 		return sound;
 	}
 
@@ -346,17 +325,16 @@ class SoundFrontEnd
 		}
 	}
 
-	inline function destroySound(sound:FlxSound):Void
+	function destroySound(sound:FlxSound):Void
 	{
-		// defaultMusicGroup.remove(sound);
-		// defaultSoundGroup.remove(sound);
+		defaultMusicGroup.remove(sound);
+		defaultSoundGroup.remove(sound);
 		sound.destroy();
 	}
 
 	/**
 	 * Toggles muted, also activating the sound tray.
 	 */
-	@:haxe.warning("-WDeprecated")
 	public function toggleMuted():Void
 	{
 		muted = !muted;
@@ -365,8 +343,6 @@ class SoundFrontEnd
 		{
 			volumeHandler(muted ? 0 : volume);
 		}
-
-		onVolumeChange.dispatch(muted ? 0 : volume);
 
 		showSoundTray(true);
 	}
@@ -413,8 +389,7 @@ class SoundFrontEnd
 			list.update(elapsed);
 
 		#if FLX_KEYBOARD
-		if (keysAllowed)
-		{
+		if (keysAllowed) {
 			if (FlxG.keys.anyJustReleased(muteKeys))
 				toggleMuted();
 			else if (FlxG.keys.anyJustReleased(volumeUpKeys))
@@ -464,18 +439,17 @@ class SoundFrontEnd
 	 */
 	function loadSavedPrefs():Void
 	{
-		var save = SoundFrontEnd.save;
-		if (!save.isBound)
+		if (!FlxG.save.isBound)
 			return;
 
-		if (save.data.volume != null)
+		if (FlxG.save.data.volume != null)
 		{
-			volume = save.data.volume;
+			volume = FlxG.save.data.volume;
 		}
 
-		if (save.data.mute != null)
+		if (FlxG.save.data.mute != null)
 		{
-			muted = save.data.mute;
+			muted = FlxG.save.data.mute;
 		}
 	}
 
@@ -485,11 +459,9 @@ class SoundFrontEnd
 
 		if (volumeHandler != null)
 		{
-			volumeHandler(muted ? 0 : Volume);
+			var param:Float = muted ? 0 : Volume;
+			volumeHandler(param);
 		}
-
-		onVolumeChange.dispatch(muted ? 0 : Volume);
-
 		return volume = Volume;
 	}
 }

@@ -95,7 +95,7 @@ class FlxBar extends FlxSprite
 	/**
 	 * Determines whenever numDivisions will make stuff blocky
 	 */
-	public var continuous:Bool = false;
+	public var unbounded:Bool = false;
 
 	/**
 	 * This function will be called when value will hit it's minimum
@@ -763,12 +763,8 @@ class FlxBar extends FlxSprite
 		var fraction:Float = (value - min) / range;
 		var percent:Float = fraction * _maxPercent;
 		var maxScale:Float = (_fillHorizontal) ? barWidth : barHeight;
-		var interval:Float = continuous ? {
-			fraction * maxScale;
-		} : {
-			var scaleInterval:Float = maxScale / numDivisions;
-			Math.round(Std.int(fraction * maxScale / scaleInterval) * scaleInterval);
-			}
+		var scaleInterval:Float = maxScale / numDivisions;
+		var interval:Float = unbounded ? fraction * maxScale : Math.round(Std.int(fraction * maxScale / scaleInterval) * scaleInterval);
 
 		if (_fillHorizontal)
 		{
@@ -784,7 +780,7 @@ class FlxBar extends FlxSprite
 			switch (fillDirection)
 			{
 				case LEFT_TO_RIGHT, TOP_TO_BOTTOM:
-					//	Already handled above
+				//	Already handled above
 
 				case BOTTOM_TO_TOP:
 					_filledBarRect.y = barHeight - _filledBarRect.height;
@@ -820,7 +816,10 @@ class FlxBar extends FlxSprite
 				if (frontFrames != null)
 				{
 					_filledFlxRect.copyFromFlash(_filledBarRect); // .round();
-					_frontFrame = frontFrames.frame.clipTo(_filledFlxRect, _frontFrame);
+					if (percent > 0)
+					{
+						_frontFrame = frontFrames.frame.clipTo(_filledFlxRect, _frontFrame);
+					}
 				}
 			}
 		}
@@ -862,35 +861,32 @@ class FlxBar extends FlxSprite
 
 		if (percent > 0 && _frontFrame.type != FlxFrameType.EMPTY)
 		{
-			for (camera in cameras)
+			for (camera in getCamerasLegacy())
 			{
 				if (!camera.visible || !camera.exists || !isOnScreen(camera))
 				{
 					continue;
 				}
 
-				_frontFrame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
+				getScreenPosition(_point, camera).subtractPoint(offset);
+
+				_frontFrame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, flipX, flipY);
 				_matrix.translate(-origin.x, -origin.y);
 				_matrix.scale(scale.x, scale.y);
 
 				// rotate matrix if sprite's graphic isn't prerotated
-				if (bakedRotationAngle <= 0)
+				if (angle != 0)
 				{
-					updateTrig();
-
-					if (angle != 0)
-						_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+					_matrix.rotateWithTrig(_cosAngle, _sinAngle);
 				}
 
-				getScreenPosition(_point, camera).subtractPoint(offset);
 				_point.add(origin.x, origin.y);
-				_matrix.translate(_point.x, _point.y);
 				if (isPixelPerfectRender(camera))
 				{
-					_matrix.tx = Math.floor(_matrix.tx);
-					_matrix.ty = Math.floor(_matrix.ty);
+					_point.floor();
 				}
 
+				_matrix.translate(_point.x, _point.y);
 				camera.drawPixels(_frontFrame, _matrix, colorTransform, blend, antialiasing, shaderEnabled ? shader : null);
 			}
 		}
@@ -1036,18 +1032,12 @@ class FlxBar extends FlxSprite
 		return value;
 	}
 
-	inline function floorFunc(x:Float):Float
+	function floorFunc(x:Float):Float
 	{
-		return continuous ? x : Std.int(x);
+		if (unbounded)
+			return x;
+		return Std.int(x);
 	}
-
-	@:noCompletion public var unbounded(get, set):Bool;
-
-	@:noCompletion inline function get_unbounded()
-		return continuous;
-
-	@:noCompletion inline function set_unbounded(value:Bool):Bool
-		return continuous = value;
 }
 
 enum FlxBarFillDirection

@@ -31,16 +31,10 @@ class FlxSoundGroup
 	 */
 	public function add(sound:FlxSound):Bool
 	{
-		if (!sounds.contains(sound))
+		if (sounds.indexOf(sound) < 0)
 		{
-			// remove from prev group
-			if (sound.group != null)
-				sound.group.sounds.remove(sound);
-
 			sounds.push(sound);
-			@:bypassAccessor
 			sound.group = this;
-			sound.updateTransform();
 			return true;
 		}
 		return false;
@@ -53,13 +47,10 @@ class FlxSoundGroup
 	 */
 	public function remove(sound:FlxSound):Bool
 	{
-		if (sounds.contains(sound))
+		if (sounds.indexOf(sound) >= 0)
 		{
-			@:bypassAccessor
 			sound.group = null;
-			sounds.remove(sound);
-			sound.updateTransform();
-			return true;
+			return sounds.remove(sound);
 		}
 		return false;
 	}

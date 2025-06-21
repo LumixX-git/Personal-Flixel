@@ -3,7 +3,6 @@ package flixel.tweens.misc;
 import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
-import flixel.util.typeLimit.OneOfTwo;
 
 /**
  * Tweens a color's red, green, and blue properties
@@ -60,8 +59,8 @@ class ColorTween extends FlxTween
 			sprite.alpha = color.alphaFloat;
 		}
 	}
-
-	override function isTweenOf(object:Dynamic, ?field:OneOfTwo<String, Int>):Bool
+	
+	override function isTweenOf(object:Dynamic, ?field:String):Bool
 	{
 		return sprite == object && (field == null || field == "color");
 	}

@@ -110,7 +110,7 @@ class FlxFilterFrames extends FlxFramesCollection
 			if (frame.name != null)
 			{
 				filterFrame.name = frame.name;
-				framesByName.set(frame.name, filterFrame);
+				framesHash.set(frame.name, filterFrame);
 			}
 		}
 

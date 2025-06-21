@@ -133,19 +133,14 @@ class FlxBaseSignal<T> implements IFlxSignal<T>
 			var handler = getHandler(listener);
 			if (handler != null)
 			{
-				removeHandler(handler);
+				if (processingListeners)
+					pendingRemove.push(handler);
+				else
+				{
+					handlers.remove(handler);
+					handler.destroy();
+				}
 			}
-		}
-	}
-
-	inline function removeHandler(handler:FlxSignalHandler<T>):Void
-	{
-		if (processingListeners)
-			pendingRemove.push(handler)
-		else
-		{
-			handlers.remove(handler);
-			handler.destroy();
 		}
 	}
 
@@ -191,12 +186,15 @@ class FlxBaseSignal<T> implements IFlxSignal<T>
 
 	function getHandler(listener:T):FlxSignalHandler<T>
 	{
-		for (handler in handlers)
+		if (handlers != null)
 		{
-			if (#if (neko || hl) // simply comparing the functions doesn't do the trick on these targets
-				Reflect.compareMethods(handler.listener, listener) #else handler.listener == listener #end)
+			for (handler in handlers)
 			{
-				return handler; // Listener was already registered.
+				if (#if (neko || hl) // simply comparing the functions doesn't do the trick on these targets
+					Reflect.compareMethods(handler.listener, listener) #else handler.listener == listener #end)
+				{
+					return handler; // Listener was already registered.
+				}
 			}
 		}
 		return null; // Listener not yet registered.
@@ -297,14 +295,14 @@ class Macro
 				handler.listener($a{exprs});
 
 				if (handler.dispatchOnce)
-					removeHandler(handler);
+					remove(handler.listener);
 			}
 
 			processingListeners = false;
 
 			for (handler in pendingRemove)
 			{
-				removeHandler(handler);
+				remove(handler.listener);
 			}
 			if (pendingRemove.length > 0)
 				pendingRemove = [];

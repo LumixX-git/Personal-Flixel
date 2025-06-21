@@ -1,5 +1,12 @@
 package flixel.sound;
 
+import openfl.events.IEventDispatcher;
+import openfl.events.Event;
+import openfl.media.Sound;
+import openfl.media.SoundChannel;
+import openfl.media.SoundTransform;
+import openfl.net.URLRequest;
+
 import flixel.FlxBasic;
 import flixel.FlxG;
 import flixel.math.FlxMath;
@@ -8,12 +15,6 @@ import flixel.system.FlxAssets.FlxSoundAsset;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxStringUtil;
 import openfl.Assets;
-import openfl.events.Event;
-import openfl.events.IEventDispatcher;
-import openfl.media.Sound;
-import openfl.media.SoundChannel;
-import openfl.media.SoundTransform;
-import openfl.net.URLRequest;
 #if flash11
 import openfl.utils.ByteArray;
 #end
@@ -81,9 +82,6 @@ class FlxSound extends FlxBasic
 
 	/**
 	 * Pan amount. -1 = full left, 1 = full right. Proximity based panning overrides this.
-	 *
-	 * Note: On desktop targets this only works with mono sounds, due to limitations of OpenAL.
-	 * More info: [OpenFL Forums - SoundTransform.pan does not work](https://community.openfl.org/t/windows-legacy-soundtransform-pan-does-not-work/6616/2?u=geokureli)
 	 */
 	public var pan(get, set):Float;
 
@@ -93,9 +91,14 @@ class FlxSound extends FlxBasic
 	public var playing(get, never):Bool;
 
 	/**
-	 * Set volume to a value between 0 and 1 to change how this sound is.
+	 * Set volume to a value between 0 and 1 to change how loud this sound is.
 	 */
 	public var volume(get, set):Float;
+
+	/**
+	 * Whether or not the sound is muted.
+	 */
+	public var muted(get, set):Bool;
 
 	#if FLX_PITCH
 	/**
@@ -170,6 +173,11 @@ class FlxSound extends FlxBasic
 	 * Internal tracker for volume.
 	 */
 	var _volume:Float;
+
+	/**
+	 * Internal tracker for whether the sound is muted or not.
+	 */
+	var _muted:Bool;
 
 	/**
 	 * Internal tracker for sound channel position.
@@ -255,10 +263,6 @@ class FlxSound extends FlxBasic
 
 	override public function destroy():Void
 	{
-		// Prevents double destroy
-		if (group != null)
-			group.remove(this);
-
 		_transform = null;
 		exists = false;
 		active = false;
@@ -603,7 +607,7 @@ class FlxSound extends FlxBasic
 			return;
 
 		_transform.volume = #if FLX_SOUND_SYSTEM (FlxG.sound.muted ? 0 : 1) * FlxG.sound.volume * #end
-			(group != null ? group.volume : 1) * _volume * _volumeAdjust;
+			(group != null ? group.volume : 1) * _volume * _volumeAdjust * (_muted ? 0 : 1);
 
 		if (_channel != null)
 			_channel.soundTransform = _transform;
@@ -713,19 +717,24 @@ class FlxSound extends FlxBasic
 	}
 	#end
 
-	function set_group(value:FlxSoundGroup):FlxSoundGroup
+	function set_group(group:FlxSoundGroup):FlxSoundGroup
 	{
-		if (value != null)
+		if (this.group != group)
 		{
-			// add to new group, also removes from prev and calls updateTransform
-			value.add(this);
+			var oldGroup:FlxSoundGroup = this.group;
+
+			// New group must be set before removing sound to prevent infinite recursion
+			this.group = group;
+
+			if (oldGroup != null)
+				oldGroup.remove(this);
+
+			if (group != null)
+				group.add(this);
+
+			updateTransform();
 		}
-		else
-		{
-			// remove from prev group, also calls updateTransform
-			group.remove(this);
-		}
-		return value;
+		return group;
 	}
 
 	inline function get_playing():Bool
@@ -743,6 +752,18 @@ class FlxSound extends FlxBasic
 		_volume = FlxMath.bound(Volume, 0, 1);
 		updateTransform();
 		return Volume;
+	}
+
+	inline function get_muted():Bool
+	{
+		return _muted;
+	}
+
+	function set_muted(Muted:Bool):Bool
+	{
+		_muted = Muted;
+		updateTransform();
+		return Muted;
 	}
 
 	#if FLX_PITCH
@@ -765,7 +786,6 @@ class FlxSound extends FlxBasic
 				_channel.__audioSource.pitch = v;
 			#end
 		}
-
 		return _pitch = v;
 	}
 	#end
@@ -777,12 +797,10 @@ class FlxSound extends FlxBasic
 
 	inline function set_pan(pan:Float):Float
 	{
-		_transform.pan = pan;
-		updateTransform();
-		return pan;
+		return _transform.pan = pan;
 	}
 
-	inline function get_time():Float
+	function get_time():Float
 	{
 		return _time;
 	}

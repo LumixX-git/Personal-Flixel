@@ -12,18 +12,17 @@ class ConsoleHistory
 
 	public function new()
 	{
-		var save = FlxDebugger.save;
-		if (save.isBound)
+		if (FlxG.save.isBound)
 		{
-			if (save.data.history != null)
+			if (FlxG.save.data.history != null)
 			{
-				commands = save.data.history;
+				commands = FlxG.save.data.history;
 				index = commands.length;
 			}
 			else
 			{
 				commands = [];
-				save.data.history = commands;
+				FlxG.save.data.history = commands;
 			}
 		}
 		else
@@ -52,8 +51,8 @@ class ConsoleHistory
 		if (isEmpty || getPreviousCommand() != command)
 		{
 			commands.push(command);
-			if (FlxDebugger.save.isBound)
-				FlxDebugger.save.flush();
+			if (FlxG.save.isBound)
+				FlxG.save.flush();
 
 			if (commands.length > MAX_LENGTH)
 				commands.shift();
@@ -65,7 +64,7 @@ class ConsoleHistory
 	public function clear()
 	{
 		commands.splice(0, commands.length);
-		FlxDebugger.save.flush();
+		FlxG.save.flush();
 	}
 
 	function get_isEmpty():Bool
