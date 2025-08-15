@@ -50,12 +50,12 @@ class FlxStrip extends FlxSprite
 		if (alpha == 0 || graphic == null || vertices == null)
 			return;
 
-		for (camera in getCamerasLegacy())
+		for (camera in cameras)
 		{
 			if (!camera.visible || !camera.exists)
 				continue;
 
-			getScreenPosition(_point, camera).subtractPoint(offset).subtractPoint(frameOffset);
+			getScreenPosition(_point, camera).subtractPoint(offset);
 			#if !flash
 			camera.drawTriangles(graphic, vertices, indices, uvtData, colors, _point, blend, repeat, antialiasing, colorTransform, shader);
 			#else

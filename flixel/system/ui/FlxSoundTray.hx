@@ -1,16 +1,17 @@
 package flixel.system.ui;
 
 #if FLX_SOUND_SYSTEM
+import flixel.FlxG;
+import flixel.system.FlxAssets;
+import flixel.system.frontEnds.SoundFrontEnd;
+import flixel.util.FlxColor;
+import openfl.Lib;
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
 import openfl.display.Sprite;
-import openfl.Lib;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
-import flixel.FlxG;
-import flixel.system.FlxAssets;
-import flixel.util.FlxColor;
 #if flash
 import openfl.text.AntiAliasType;
 import openfl.text.GridFitType;
@@ -101,13 +102,15 @@ class FlxSoundTray extends Sprite
 
 	@:dox(hide) public function get__width():Int
 	{
-		if (background != null) _width = Math.round(background.width);  // Must round this to an Int to keep backwards compatibility  - Nex
+		if (background != null)
+			_width = Math.round(background.width); // Must round this to an Int to keep backwards compatibility  - Nex
 		return _width;
 	}
 
 	@:dox(hide) public function set__width(value:Int):Int
 	{
-		if (background != null) background.width = value;
+		if (background != null)
+			background.width = value;
 		return _width = value;
 	}
 
@@ -118,13 +121,15 @@ class FlxSoundTray extends Sprite
 
 	@:dox(hide) public function get__height():Int
 	{
-		if (background != null) _height = Math.round(background.height);
+		if (background != null)
+			_height = Math.round(background.height);
 		return _height;
 	}
 
 	@:dox(hide) public function set__height(value:Int):Int
 	{
-		if (background != null) background.height = value;
+		if (background != null)
+			background.height = value;
 		return _height = value;
 	}
 
@@ -173,7 +178,8 @@ class FlxSoundTray extends Sprite
 		text.antiAliasType = AntiAliasType.NORMAL;
 		text.gridFitType = GridFitType.PIXEL;
 		#end
-		if (reloadDefaultTextFormat) reloadDtf();
+		if (reloadDefaultTextFormat)
+			reloadDtf();
 		text.defaultTextFormat = _dtf;
 		addChild(text);
 		text.text = displayTxt;
@@ -191,13 +197,15 @@ class FlxSoundTray extends Sprite
 
 	public function regenerateBarsArray():Void
 	{
-		if (_bars == null) _bars = new Array();
-		else for (bar in _bars)
-		{
-			_bars.remove(bar);
-			removeChild(bar);
-			bar.bitmapData.dispose();
-		}
+		if (_bars == null)
+			_bars = new Array();
+		else
+			for (bar in _bars)
+			{
+				_bars.remove(bar);
+				removeChild(bar);
+				bar.bitmapData.dispose();
+			}
 	}
 
 	/**
@@ -223,11 +231,11 @@ class FlxSoundTray extends Sprite
 	}
 
 	/**
-	 * This function just updates the soundtray object.
+	 * This function updates the soundtray object.
 	 */
 	public function update(MS:Float):Void
 	{
-		// Animate stupid sound tray thing
+		// Animate sound tray thing
 		if (_timer > 0)
 		{
 			_timer -= MS / 1000;
@@ -247,9 +255,10 @@ class FlxSoundTray extends Sprite
 
 	public function saveSoundPreferences():Void
 	{
-		FlxG.save.data.mute = FlxG.sound.muted;
-		FlxG.save.data.volume = FlxG.sound.volume;
-		FlxG.save.flush();
+		var save = SoundFrontEnd.save;
+		save.data.mute = FlxG.sound.muted;
+		save.data.volume = FlxG.sound.volume;
+		save.flush();
 	}
 
 	/**
@@ -258,7 +267,7 @@ class FlxSoundTray extends Sprite
 	public function show(up:Bool = false):Void
 	{
 		var globalVolume:Int = FlxG.sound.muted ? 0 : Math.round(FlxG.sound.volume * barsAmount);
-    
+
 		_timer = 1;
 		y = 0;
 		visible = true;
@@ -266,14 +275,17 @@ class FlxSoundTray extends Sprite
 
 		if (!silent)
 		{
-			var sound = up ? (globalVolume >= barsAmount && volumeMaxChangeSFX != null ? volumeMaxChangeSFX : volumeUpChangeSFX) : volumeDownChangeSFX;
-			if (sound == null) sound = volumeChangeSFX;
-			FlxG.sound.play(FlxAssets.getSound(sound));
+			var sound = up ? (globalVolume >= barsAmount
+				&& volumeMaxChangeSFX != null ? volumeMaxChangeSFX : volumeUpChangeSFX) : volumeDownChangeSFX;
+			if (sound == null)
+				sound = volumeChangeSFX;
+			FlxG.sound.load(sound).play();
 		}
 
 		for (i in 0..._bars.length)
 		{
-			if(_bars[i] != null) _bars[i].alpha = i < globalVolume ? 1 : 0.5;
+			if (_bars[i] != null)
+				_bars[i].alpha = i < globalVolume ? 1 : 0.5;
 		}
 	}
 

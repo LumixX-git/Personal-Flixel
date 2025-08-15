@@ -12,10 +12,10 @@ import flixel.system.debug.FlxDebugger.GraphicStats;
 import flixel.system.ui.FlxSystemButton;
 import flixel.util.FlxColor;
 
-@:bitmap("assets/images/debugger/buttons/minimize.png")
+#if FLX_DEBUG @:bitmap("assets/images/debugger/buttons/minimize.png") #end
 class GraphicMinimizeButton extends BitmapData {}
 
-@:bitmap("assets/images/debugger/buttons/maximize.png")
+#if FLX_DEBUG @:bitmap("assets/images/debugger/buttons/maximize.png") #end
 class GraphicMaximizeButton extends BitmapData {}
 
 /**
@@ -49,9 +49,9 @@ class Stats extends Window
 	var _leftTextField:TextField;
 	var _rightTextField:TextField;
 
-	var _itvTime:Float = 0;
+	var _itvTime:Int = 0;
 	var _frameCount:Int;
-	var _currentTime:Float;
+	var _currentTime:Int;
 
 	var fpsGraph:StatsGraph;
 	var memoryGraph:StatsGraph;
@@ -61,17 +61,17 @@ class Stats extends Window
 	var flashPlayerFramerate:Float = 0;
 	var visibleCount:Int = 0;
 	var activeCount:Int = 0;
-	var updateTime:Float = 0;
-	var drawTime:Float = 0;
+	var updateTime:Int = 0;
+	var drawTime:Int = 0;
 	var drawCallsCount:Int = 0;
 
-	var _lastTime:Float = 0;
-	var _updateTimer:Float = 0;
+	var _lastTime:Int = 0;
+	var _updateTimer:Int = 0;
 
-	var _update:Array<Float> = [];
+	var _update:Array<Int> = [];
 	var _updateMarker:Int = 0;
 
-	var _draw:Array<Float> = [];
+	var _draw:Array<Int> = [];
 	var _drawMarker:Int = 0;
 
 	var _drawCalls:Array<Int> = [];
@@ -226,17 +226,18 @@ class Stats extends Window
 		{
 			return;
 		}
-		var time:Float = _currentTime = FlxG.game.ticks;
+		var time:Int = _currentTime = FlxG.game.ticks;
 
-		var elapsed:Float = time - _lastTime;
+		var elapsed:Int = time - _lastTime;
 
-		if (Math.abs(elapsed) > UPDATE_DELAY)
+		if (elapsed > UPDATE_DELAY)
 		{
 			elapsed = UPDATE_DELAY;
 		}
 		_lastTime = time;
 
 		_updateTimer += elapsed;
+
 		_frameCount++;
 
 		if (_updateTimer > UPDATE_DELAY)
@@ -290,7 +291,7 @@ class Stats extends Window
 				_drawCallsMarker = 0;
 			}
 
-			_updateTimer = 0;
+			_updateTimer -= UPDATE_DELAY;
 		}
 	}
 
@@ -332,7 +333,7 @@ class Stats extends Window
 	 */
 	public inline function currentMem():Float
 	{
-		return (System.totalMemory / 1024) / 1000;
+		return (#if (openfl >= "9.4.0") System.totalMemoryNumber #else System.totalMemory #end / 1024) / 1000;
 	}
 
 	/**
@@ -340,7 +341,7 @@ class Stats extends Window
 	 *
 	 * @param 	Time	How long this update took.
 	 */
-	public function flixelUpdate(Time:Float):Void
+	public function flixelUpdate(Time:Int):Void
 	{
 		if (_paused)
 			return;
@@ -352,7 +353,7 @@ class Stats extends Window
 	 *
 	 * @param	Time	How long this render took.
 	 */
-	public function flixelDraw(Time:Float):Void
+	public function flixelDraw(Time:Int):Void
 	{
 		if (_paused)
 			return;

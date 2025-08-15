@@ -62,7 +62,7 @@ class FlxSubState extends FlxState
 		// Draw background
 		if (FlxG.renderBlit)
 		{
-			for (camera in getCamerasLegacy())
+			for (camera in cameras)
 			{
 				camera.fill(bgColor);
 			}

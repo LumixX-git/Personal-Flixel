@@ -878,7 +878,7 @@ class FlxObject extends FlxBasic
 		if (path != null && path.active)
 			path.update(elapsed);
 
-		if (moves && (velocity.x != 0 || velocity.y != 0 || angularVelocity != 0))
+		if (moves)
 			updateMotion(elapsed);
 
 		wasTouching = touching;
@@ -893,32 +893,22 @@ class FlxObject extends FlxBasic
 	@:noCompletion
 	function updateMotion(elapsed:Float):Void
 	{
-		if (velocity.x == 0 && velocity.y == 0 && angularVelocity == 0)
-			return;
-
 		var velocityDelta = 0.5 * (FlxVelocity.computeVelocity(angularVelocity, angularAcceleration, angularDrag, maxAngular, elapsed) - angularVelocity);
+		angularVelocity += velocityDelta;
+		angle += angularVelocity * elapsed;
+		angularVelocity += velocityDelta;
 
-        if (angularVelocity != 0) {
-            angularVelocity += velocityDelta;
-            angle += angularVelocity * elapsed;
-            angularVelocity += velocityDelta;
-        }
+		velocityDelta = 0.5 * (FlxVelocity.computeVelocity(velocity.x, acceleration.x, drag.x, maxVelocity.x, elapsed) - velocity.x);
+		velocity.x += velocityDelta;
+		var delta = velocity.x * elapsed;
+		velocity.x += velocityDelta;
+		x += delta;
 
-        if (velocity.x != 0) {
-            velocityDelta = 0.5 * (FlxVelocity.computeVelocity(velocity.x, acceleration.x, drag.x, maxVelocity.x, elapsed) - velocity.x);
-            velocity.x += velocityDelta;
-            var delta = velocity.x * elapsed;
-            velocity.x += velocityDelta;
-            x += delta;
-        }
-
-        if (velocity.y != 0) {
-            velocityDelta = 0.5 * (FlxVelocity.computeVelocity(velocity.y, acceleration.y, drag.y, maxVelocity.y, elapsed) - velocity.y);
-            velocity.y += velocityDelta;
-            var delta = velocity.y * elapsed;
-            velocity.y += velocityDelta;
-            y += delta;
-        }
+		velocityDelta = 0.5 * (FlxVelocity.computeVelocity(velocity.y, acceleration.y, drag.y, maxVelocity.y, elapsed) - velocity.y);
+		velocity.y += velocityDelta;
+		delta = velocity.y * elapsed;
+		velocity.y += velocityDelta;
+		y += delta;
 	}
 
 	/**
@@ -951,7 +941,7 @@ class FlxObject extends FlxBasic
 		var group = FlxTypedGroup.resolveGroup(objectOrGroup);
 		if (group != null) // if it is a group
 		{
-			return group.any(overlapsCallback.bind(_, 0, 0, inScreenSpace, camera));
+			return FlxTypedGroup.overlaps(overlapsCallback, group, 0, 0, inScreenSpace, camera);
 		}
 
 		if (objectOrGroup.flixelType == TILEMAP)
@@ -1010,7 +1000,7 @@ class FlxObject extends FlxBasic
 		var group = FlxTypedGroup.resolveGroup(objectOrGroup);
 		if (group != null) // if it is a group
 		{
-			return group.any(overlapsAtCallback.bind(_, x, y, inScreenSpace, camera));
+			return FlxTypedGroup.overlaps(overlapsAtCallback, group, x, y, inScreenSpace, camera);
 		}
 
 		if (objectOrGroup.flixelType == TILEMAP)
@@ -1103,8 +1093,8 @@ class FlxObject extends FlxBasic
 		result.set(x, y);
 		if (pixelPerfectPosition)
 			result.floor();
-
 		result.subtract(camera.scroll.x * scrollFactor.x, camera.scroll.y * scrollFactor.y);
+
 		return camera.alterScreenPosition(this, result);
 	}
 
@@ -1234,7 +1224,7 @@ class FlxObject extends FlxBasic
 	 * @param   axes   On what axes to center the object (e.g. `X`, `Y`, `XY`) - default is both. 
 	 * @return  This FlxObject for chaining
 	 */
-	public function screenCenter(axes:FlxAxes = XY):FlxObject
+	public inline function screenCenter(axes:FlxAxes = XY):FlxObject
 	{
 		if (axes.x)
 			x = (FlxG.width - width) / 2;
@@ -1276,11 +1266,13 @@ class FlxObject extends FlxBasic
 		if (ignoreDrawDebug)
 			return;
 
-		for (camera in getCamerasLegacy())
+		final drawPath = path != null && !path.ignoreDrawDebug;
+
+		for (camera in cameras)
 		{
 			drawDebugOnCamera(camera);
 
-			if (path != null && !path.ignoreDrawDebug)
+			if (drawPath)
 				path.drawDebug();
 		}
 	}

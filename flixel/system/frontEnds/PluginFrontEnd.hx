@@ -21,13 +21,17 @@ class PluginFrontEnd
 	 */
 	public var list(default, null):Array<FlxBasic> = [];
 
+	public var drawOnTop:Bool = false;
+
 	/**
 	 * Adds a new plugin to the global plugin array.
 	 *
 	 * @param	Plugin	Any object that extends FlxPlugin. Useful for managers and other things. See flixel.plugin for some examples!
 	 * @return	The same FlxPlugin-based plugin you passed in.
 	 */
+	#if FLX_GENERIC
 	@:generic
+	#end
 	public function add<T:FlxBasic>(Plugin:T):T
 	{
 		// Don't add repeats

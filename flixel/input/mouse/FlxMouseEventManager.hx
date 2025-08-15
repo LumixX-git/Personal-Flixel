@@ -48,7 +48,7 @@ class FlxMouseEventManager extends FlxBasic
 	var _downList:Array<FlxMouseEvent<FlxObject>> = [];
 	var _clickList:Array<FlxMouseEvent<FlxObject>> = [];
 
-	var mouseClickedTime:Float = -1;
+	var mouseClickedTime:Int = -1;
 
 	@:noCompletion
 	var _point:FlxPoint = FlxPoint.get();
@@ -647,7 +647,7 @@ class FlxMouseEventManager extends FlxBasic
 
 	function checkOverlap<T:FlxObject>(event:FlxMouseEvent<T>):Bool
 	{
-		for (camera in event.object.getCameras())
+		for (camera in event.object.cameras)
 		{
 			#if FLX_MOUSE
 			_point = FlxG.mouse.getPositionInCameraView(camera, _point);

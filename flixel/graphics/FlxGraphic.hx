@@ -1,6 +1,5 @@
 package flixel.graphics;
 
-import flixel.util.FlxSignal;
 import openfl.display.BitmapData;
 import flixel.FlxG;
 import flixel.graphics.frames.FlxAtlasFrames;
@@ -21,14 +20,6 @@ class FlxGraphic implements IFlxDestroyable
 {
 	@:allow(flixel.system.frontEnds.BitmapFrontEnd)
 	private var mustDestroy:Bool = false;
-
-	/**
-	 * A signal that gets dispatched whenever a new graphic is created.
-	 * 
-	 * You may use this signal to remove the graphic from CPU memory
-	 * and only keep it in GPU memory, or other specific needs!
-	 */
-	public static var graphicCreated:FlxTypedSignal<FlxGraphic->Void> = new FlxTypedSignal();
 
 	/**
 	 * The default value for the `persist` variable at creation if none is specified in the constructor.
@@ -408,7 +399,6 @@ class FlxGraphic implements IFlxDestroyable
 		this.bitmap = bitmap;
 
 		shader = new FlxShader();
-		graphicCreated.dispatch(this);
 	}
 
 	/**

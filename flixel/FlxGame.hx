@@ -1,19 +1,16 @@
 package flixel;
 
-import haxe.Timer;
-
-import openfl.Lib;
-import openfl.display.Sprite;
-import openfl.display.StageAlign;
-import openfl.display.StageScaleMode;
-import openfl.events.Event;
-
 import flixel.graphics.tile.FlxDrawBaseItem;
 import flixel.system.FlxSplash;
 import flixel.util.FlxArrayUtil;
 import openfl.filters.ShaderFilter;
 import flixel.system.FlxAssets.FlxShader;
 import openfl.Assets;
+import openfl.Lib;
+import openfl.display.Sprite;
+import openfl.display.StageAlign;
+import openfl.display.StageScaleMode;
+import openfl.events.Event;
 import openfl.filters.BitmapFilter;
 import flixel.util.FlxDestroyUtil;
 #if desktop
@@ -82,7 +79,7 @@ class FlxGame extends Sprite
 	/**
 	 * Time in milliseconds that has passed (amount of "ticks" passed) since the game has started.
 	 */
-	public var ticks(default, null):Float = 0;
+	public var ticks(default, null):Int = 0;
 
 	/**
 	 * Enables or disables the filters set via `setFilters()`.
@@ -108,13 +105,13 @@ class FlxGame extends Sprite
 	/**
 	 * Total number of milliseconds elapsed since game start.
 	 */
-	var _total:Float = 0;
+	var _total:Int = 0;
 
 	/**
 	 * Time stamp of game startup. Needed on JS where `Lib.getTimer()`
 	 * returns time stamp of current date, not the time passed since app start.
 	 */
-	var _startTime:Float = 0;
+	var _startTime:Int = 0;
 
 	/**
 	 * Total number of milliseconds elapsed since last update loop.
@@ -356,7 +353,7 @@ class FlxGame extends Sprite
 
 		removeEventListener(Event.ADDED_TO_STAGE, create);
 
-		_startTime = Sys.time();
+		_startTime = getTimer();
 		_total = getTicks();
 
 		#if desktop
@@ -638,11 +635,6 @@ class FlxGame extends Sprite
 			_skipSplash = true; // only play it once
 		}
 
-		#if FLX_DEBUG
-		if ((_requestedState is FlxSubState))
-			throw "You can't set FlxSubState class instance as the state for you game";
-		#end
-
 		FlxG.reset();
 
 		FlxG.signals.postGameReset.dispatch();
@@ -783,9 +775,10 @@ class FlxGame extends Sprite
 
 		updateElapsed();
 
-		FlxG.signals.preUpdate.dispatch();
-
 		updateInput();
+
+		// This caused issues if it was before `updateInput`.. so uh yeah FINALLY I FIXED A BUG THATS BEEN IN CNE FOR LIKE YEARS :SOB: - LJ
+		FlxG.signals.preUpdate.dispatch();
 
 		#if FLX_POST_PROCESS
 		if (postProcesses[0] != null)
@@ -818,14 +811,15 @@ class FlxGame extends Sprite
 		if (FlxG.fixedTimestep)
 		{
 			FlxG.elapsed = FlxG.timeScale * _stepSeconds; // fixed timestep
+			FlxG.rawElapsed = _stepSeconds;
 		}
 		else
 		{
-			FlxG.elapsed = FlxG.timeScale * (_elapsedMS / 1000); // variable timestep
+			FlxG.rawElapsed = _elapsedMS / 1000; // variable timestep
+			if (FlxG.rawElapsed > FlxG.maxElapsed)
+				FlxG.rawElapsed = FlxG.maxElapsed;
 
-			var max = FlxG.maxElapsed * FlxG.timeScale;
-			if (FlxG.elapsed > max)
-				FlxG.elapsed = max;
+			FlxG.elapsed = FlxG.timeScale * FlxG.rawElapsed;
 		}
 	}
 
@@ -914,9 +908,16 @@ class FlxGame extends Sprite
 
 		FlxG.cameras.lock();
 
-		FlxG.plugins.draw();
-
-		_state.draw();
+		if (FlxG.plugins.drawOnTop)
+		{
+			_state.draw();
+			FlxG.plugins.draw();
+		}
+		else
+		{
+			FlxG.plugins.draw();
+			_state.draw();
+		}
 
 		if (FlxG.renderTile)
 		{
@@ -938,12 +939,12 @@ class FlxGame extends Sprite
 
 	inline function getTicks()
 	{
-		return (getTimer() - _startTime) * 1000.0;
+		return getTimer() - _startTime;
 	}
 
-	dynamic function getTimer():Float
+	dynamic function getTimer():Int
 	{
 		// expensive, only call if necessary
-		return Timer.stamp();
+		return Lib.getTimer();
 	}
 }

@@ -1,12 +1,5 @@
 package flixel.text;
 
-import openfl.display.BitmapData;
-import openfl.geom.ColorTransform;
-import openfl.text.TextField;
-import openfl.text.TextFieldAutoSize;
-import openfl.text.TextFormat;
-import openfl.text.TextFormatAlign;
-
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.graphics.FlxGraphic;
@@ -21,6 +14,12 @@ import flixel.util.FlxColor;
 import flixel.util.FlxDestroyUtil;
 import flixel.util.helpers.FlxRange;
 import openfl.Assets;
+import openfl.display.BitmapData;
+import openfl.geom.ColorTransform;
+import openfl.text.TextField;
+import openfl.text.TextFieldAutoSize;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
 
 using flixel.util.FlxStringUtil;
 using flixel.util.FlxUnicodeUtil;
@@ -891,13 +890,6 @@ class FlxText extends FlxSprite
 
 		if (oldWidth != newWidth || oldHeight != newHeight)
 		{
-			// Destroy old text graphic to avoid memory leaks
-			if(graphic != null) 
-			{
-				graphic.dump();
-				graphic.destroy();
-			}
-
 			// Need to generate a new buffer to store the text graphic
 			height = newHeight;
 			var key:String = FlxG.bitmap.getUniqueKey("text");

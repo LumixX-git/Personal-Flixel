@@ -44,14 +44,6 @@ class FlxTimer implements IFlxDestroyable
 	public var loops:Int = 0;
 
 	/**
-	 * Whether or not this timer is paused.
-	 * 
-	 * Useful for keeping tweens active after unpausing the game
-	 * via a pause menu.
-	 */
-	public var paused:Bool = true;
-
-	/**
 	 * Pauses or checks the pause state of the timer.
 	 */
 	public var active:Bool = false;
@@ -138,7 +130,6 @@ class FlxTimer implements IFlxDestroyable
 			_inManager = true;
 		}
 
-		paused = false;
 		active = true;
 		finished = false;
 		this.time = Math.abs(time);
@@ -173,8 +164,6 @@ class FlxTimer implements IFlxDestroyable
 	public function cancel():Void
 	{
 		finished = true;
-
-		paused = true;
 		active = false;
 
 		if (manager != null && _inManager)
@@ -194,7 +183,7 @@ class FlxTimer implements IFlxDestroyable
 	{
 		_timeCounter += elapsed;
 
-		while ((_timeCounter >= time) && active && !paused && !finished)
+		while ((_timeCounter >= time) && active && !finished)
 		{
 			_timeCounter -= time;
 			_loopsCounter++;
@@ -284,7 +273,7 @@ class FlxTimerManager extends FlxBasic
 
 		for (timer in _timers)
 		{
-			if (timer.active && !timer.paused && !timer.finished && timer.time >= 0)
+			if (timer.active && !timer.finished && timer.time >= 0)
 			{
 				var timerLoops:Int = timer.elapsedLoops;
 				timer.update(elapsed);
@@ -341,7 +330,7 @@ class FlxTimerManager extends FlxBasic
 	{
 		var timersToFinish:Array<FlxTimer> = [];
 		for (timer in _timers)
-			if (timer.loops > 0 && timer.active && !timer.paused)
+			if (timer.loops > 0 && timer.active)
 				timersToFinish.push(timer);
 
 		for (timer in timersToFinish)

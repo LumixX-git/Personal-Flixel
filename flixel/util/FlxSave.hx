@@ -5,6 +5,12 @@ import openfl.errors.Error;
 import openfl.net.SharedObject;
 import openfl.net.SharedObjectFlushStatus;
 
+@:dox(hide)
+interface IDisposable
+{
+	function dispose():Void;
+}
+
 /**
  * A class to help automate and simplify save game functionality. A simple wrapper for the OpenFl's
  * SharedObject, with a couple helpers. It's used automatically by various flixel utilities like
@@ -55,9 +61,8 @@ import openfl.net.SharedObjectFlushStatus;
 @:allow(flixel.util.FlxSharedObject)
 class FlxSave implements IFlxDestroyable
 {
-	
-	static var invalidChars = ~/[ ~%&\\;:"',<>?#]+/;
-	
+	static var invalidChars = ~/[ ~%&\\;:"',<>?#]+/g;
+
 	/**
 	 * Checks for `~%&\;:"',<>?#` or space characters
 	 */
@@ -70,7 +75,7 @@ class FlxSave implements IFlxDestroyable
 		return invalidChars.match(str);
 		#end
 	}
-	
+
 	/**
 	 * Converts invalid characters to "-", producing a valid string for a FlxSave's name and path
 	 */
@@ -84,7 +89,7 @@ class FlxSave implements IFlxDestroyable
 		return invalidChars.split(str).join("-");
 		#end
 	}
-	
+
 	/**
 	 * Converts invalid characters to "-", and logs a warning in debug mode
 	 */
@@ -97,7 +102,7 @@ class FlxSave implements IFlxDestroyable
 		#end
 		return newStr;
 	}
-	
+
 	/**
 	 * Allows you to directly access the data container in the local shared object.
 	 */
@@ -125,7 +130,7 @@ class FlxSave implements IFlxDestroyable
 	 * @since 5.0.0
 	 */
 	public var isBound(get, never):Bool;
-	
+
 	/**
 	 * The local shared object itself.
 	 */
@@ -138,7 +143,15 @@ class FlxSave implements IFlxDestroyable
 	 */
 	public function destroy():Void
 	{
-		_sharedObject = null;
+		if (_sharedObject != null)
+		{
+			if ((_sharedObject is IDisposable))
+			{
+				var disposable:IDisposable = cast _sharedObject;
+				disposable.dispose();
+			}
+			_sharedObject = null;
+		}
 		status = EMPTY;
 		data = null;
 	}
@@ -157,11 +170,11 @@ class FlxSave implements IFlxDestroyable
 	public function bind(name:String, ?path:String):Bool
 	{
 		destroy();
-		
+
 		name = validateAndWarn(name, "name");
 		if (path != null)
 			path = validateAndWarn(path, "path");
-		
+
 		try
 		{
 			_sharedObject = FlxSharedObject.getLocal(name, path);
@@ -192,7 +205,7 @@ class FlxSave implements IFlxDestroyable
 	{
 		if (!checkStatus())
 			return false;
-		
+
 		final oldSave = new FlxSave();
 		// check old save location
 		if (oldSave.bind(name, path))
@@ -372,7 +385,7 @@ class FlxSave implements IFlxDestroyable
  * referencing is a really cool idea so let's allow it!
  */
 @:access(openfl.net.SharedObject)
-class FlxSharedObject extends SharedObject
+class FlxSharedObject extends SharedObject implements IDisposable
 {
 	#if (flash || android || ios)
 	/** Use SharedObject as usual */
@@ -380,32 +393,45 @@ class FlxSharedObject extends SharedObject
 	{
 		return SharedObject.getLocal(name, localPath);
 	}
-	
+
 	public static inline function exists(name:String, ?path:String)
 	{
 		return true;
 	}
+
+	public function dispose()
+	{
+		// do nothing
+	}
 	#else
 	static var all:Map<String, FlxSharedObject>;
-	
+
+	var allId:String;
+
 	static function init()
 	{
 		if (all == null)
 		{
 			all = new Map();
-			
+
 			var app = lime.app.Application.current;
 			if (app != null)
 				app.onExit.add(onExit);
 		}
 	}
-	
+
+	public function dispose()
+	{
+		if (all != null && all.exists(allId))
+			all.remove(allId);
+	}
+
 	static function onExit(_)
 	{
 		for (sharedObject in all)
 			sharedObject.flush();
 	}
-	
+
 	/**
 	 * Returns the company name listed in the Project.xml
 	 */
@@ -417,174 +443,173 @@ class FlxSharedObject extends SharedObject
 			path = "HaxeFlixel";
 		else
 			path = FlxSave.validate(path);
-		
+
 		return path;
 	}
-	
+
 	public static function getLocal(name:String, ?localPath:String):SharedObject
 	{
 		if (name == null || name == "")
 			throw new Error('Error: Invalid name:"$name".');
-		
+
 		if (localPath == null)
 			localPath = "";
-		
+
 		var id = localPath + "/" + name;
-		
+
 		init();
-		
+
 		if (!all.exists(id))
 		{
 			var encodedData = null;
-			
+
 			try
 			{
 				if (~/(?:^|\/)\.\.\//.match(localPath))
 					throw new Error("../ not allowed in localPath");
-				
+
 				encodedData = getData(name, localPath);
 			}
 			catch (e:Dynamic) {}
-			
+
 			if (localPath == "")
 				localPath = getDefaultLocalPath();
-			
+
 			final sharedObject = new FlxSharedObject();
 			sharedObject.data = {};
 			sharedObject.__localPath = localPath;
 			sharedObject.__name = name;
-			
+
 			if (encodedData != null && encodedData != "")
 			{
 				try
 				{
 					final unserializer = new haxe.Unserializer(encodedData);
-					final resolver = { resolveEnum: Type.resolveEnum, resolveClass: SharedObject.__resolveClass };
+					final resolver = {resolveEnum: Type.resolveEnum, resolveClass: SharedObject.__resolveClass};
 					unserializer.setResolver(cast resolver);
 					sharedObject.data = unserializer.unserialize();
 				}
 				catch (e:Dynamic) {}
 			}
-			
+
+			sharedObject.allId = id;
 			all.set(id, sharedObject);
 		}
-		
+
 		return all.get(id);
 	}
-	
+
 	#if (js && html5)
 	static function getData(name:String, ?localPath:String)
 	{
 		final storage = js.Browser.getLocalStorage();
 		if (storage == null)
 			return null;
-		
+
 		function get(path:String)
 		{
 			return storage.getItem(path + ":" + name);
 		}
-		
+
 		// do not check for legacy saves when path is provided
 		if (localPath != "")
 			return get(localPath);
-		
+
 		var encodedData:String;
 		// check default localPath
 		encodedData = get(getDefaultLocalPath());
 		if (encodedData != null)
 			return encodedData;
-		
+
 		// check pre-5.0.0 default local path
 		encodedData = get(js.Browser.window.location.pathname);
 		if (encodedData != null)
 			return encodedData;
-		
+
 		// check pre-4.6.0 default local path
 		return get(js.Browser.window.location.href);
 	}
-	
+
 	public static function exists(name:String, ?localPath:String)
 	{
 		final storage = js.Browser.getLocalStorage();
-		
+
 		if (storage == null)
 			return false;
-		
+
 		inline function has(path:String)
 		{
 			return storage.getItem(path + ":" + name) != null;
 		}
-		
+
 		return has(localPath)
 			|| has(getDefaultLocalPath())
 			|| has(js.Browser.window.location.pathname)
 			|| has(js.Browser.window.location.href);
 	}
-	
+
 	// should include every sys target
 	#else
-	
 	static function getData(name:String, ?localPath:String)
 	{
 		var path = getPath(localPath, name);
 		if (sys.FileSystem.exists(path))
 			return sys.io.File.getContent(path);
-		
+
 		// No save found, check the legacy save path
 		path = getLegacyPath(localPath, name);
 		if (sys.FileSystem.exists(path))
 			return sys.io.File.getContent(path);
-		
+
 		return null;
 	}
-	
+
 	static function getPath(localPath:String, name:String):String
 	{
 		// Avoid ever putting .sol files directly in AppData
 		if (localPath == "")
 			localPath = getDefaultLocalPath();
-		
+
 		var directory = lime.system.System.applicationStorageDirectory;
 		var path = haxe.io.Path.normalize('$directory/../../../$localPath') + "/";
-		
+
 		name = StringTools.replace(name, "//", "/");
 		name = StringTools.replace(name, "//", "/");
-		
+
 		if (StringTools.startsWith(name, "/"))
 		{
 			name = name.substr(1);
 		}
-		
+
 		if (StringTools.endsWith(name, "/"))
 		{
 			name = name.substring(0, name.length - 1);
 		}
-		
+
 		if (name.indexOf("/") > -1)
 		{
 			var split = name.split("/");
 			name = "";
-			
+
 			for (i in 0...(split.length - 1))
 			{
 				name += "#" + split[i] + "/";
 			}
-			
+
 			name += split[split.length - 1];
 		}
-		
+
 		return path + name + ".sol";
 	}
-	
+
 	/**
 	 * Whether the save exists, checks both the old and new path.
 	 */
 	public static inline function exists(name:String, ?localPath:String)
 	{
-		return newExists(localPath, name)
-			|| legacyExists(localPath, name);
+		return newExists(localPath, name) || legacyExists(localPath, name);
 	}
-	
+
 	/**
 	 * Whether the save exists, checks the NEW location
 	 */
@@ -592,12 +617,12 @@ class FlxSharedObject extends SharedObject
 	{
 		return sys.FileSystem.exists(getPath(localPath, name));
 	}
-	
+
 	static inline function getLegacyPath(localPath:String, name:String)
 	{
 		return SharedObject.__getPath(localPath, name);
 	}
-	
+
 	/**
 	 * Whether the save exists, checks the LEGACY location
 	 */
@@ -605,24 +630,24 @@ class FlxSharedObject extends SharedObject
 	{
 		return sys.FileSystem.exists(getLegacyPath(localPath, name));
 	}
-	
+
 	override function flush(minDiskSpace:Int = 0)
 	{
 		if (Reflect.fields(data).length == 0)
 		{
 			return SharedObjectFlushStatus.FLUSHED;
 		}
-		
+
 		var encodedData = haxe.Serializer.run(data);
-		
+
 		try
 		{
 			var path = getPath(__localPath, __name);
 			var directory = haxe.io.Path.directory(path);
-			
+
 			if (!sys.FileSystem.exists(directory))
 				SharedObject.__mkdir(directory);
-			
+
 			var output = sys.io.File.write(path, false);
 			output.writeString(encodedData);
 			output.close();
@@ -631,18 +656,18 @@ class FlxSharedObject extends SharedObject
 		{
 			return SharedObjectFlushStatus.PENDING;
 		}
-		
+
 		return SharedObjectFlushStatus.FLUSHED;
 	}
-	
+
 	override function clear()
 	{
 		data = {};
-		
+
 		try
 		{
 			var path = getPath(__localPath, __name);
-			
+
 			if (sys.FileSystem.exists(path))
 				sys.FileSystem.deleteFile(path);
 		}
